@@ -20,6 +20,8 @@ from pathlib import Path as Filepath
 #Takes the location of your vaac html files as input
 #Outputs the list of vertices for the vaac polygon along with the .DAT general filetype
 
+htmlpath = "D:\HTML_analysis_folder"
+
 def coords_file_pairs(filepath):
 
     #We get an OS standardised filepath in which to search for the .html files
@@ -42,16 +44,16 @@ def coords_file_pairs(filepath):
         with codecs.open(file, 'r') as f: # codecs might not be required here, or rather io might be better?
             html = f.read() # This sets the variable html as the contents of fn_vacc (rather than the file itself)
 
-        soup = BeautifulSoup(html, features="html.parser") # This gives us the BeautifulSoup-ifyed version (Pythonic?), read by default parser (can't get lxml to work?)
-        div = soup.find('div') # This extracts the main bit of text from soup (ignoring the main title and lines and stuff)
+        soup = BeautifulSoup(html, features="html.parser")
+        div = soup.find('div')
+        # This extracts the main bit of text from soup (ignoring the main title and lines and stuff)
         vaac = [str(s) for s in div.contents if str(s) != '<br/>' and str(s) != str('\n')]
-        date_time_info_pub = vaac[3] #this is the line in the vaac that gives the time which the vaac was issued NOT the observation time
-        #the polygon is issued for a ash cloud as it was 40 minutes before the publishing time of the vaac warning
+        date_time_info_pub = vaac[3]
+        # this is the line in the vaac that gives the time which the vaac was issued NOT the observation time
+        # the polygon is issued for a ash cloud as it was 40 minutes before the publishing time of the vaac warning
 
         date_time_info_obs = vaac[13] #this is the line in the vaac containing the observation time information
         polygon_info = vaac[14] + vaac[15] + vaac[16] #these lines contain information about the polygon vertices
-        print ("polygon info source from html: " + str(polygon_info))
-
         # We import the obs time and the pub date and time
         # Import pub & obs time into two variables hr and min
         pub_date = date_time_info_pub[5:13]
@@ -78,11 +80,11 @@ def coords_file_pairs(filepath):
         # now subtracting the time difference from pub to obtain obs date
         obs_date = pub_date - tdelta
 
-        ###I now work on converting the polygon's coordinates into a useable format:
-        ###First of all I need to remove the information that is not coordinates.
+        ### I now work on converting the polygon's coordinates into a useable format:
+        ### First of all I need to remove the information that is not coordinates.
 
         words = polygon_info.split(" ") #Splits the string into a list of all the 'words'
-        #we must now check if the string is of the form Nxxxx or Exxxxx etcetera
+        # we must now check if the string is of the form Nxxxx or Exxxxx etcetera
         bad_words = []
         for word in words:
             if len(word) > 6 or len(word) < 5 or word[0] not in ["N","E","S","W"]: #this is ridiculous
@@ -91,14 +93,8 @@ def coords_file_pairs(filepath):
                 if words.index(word) > words.index("MOV"): #If MOV is in the vaac then the coordinates after it are forecasts
                     bad_words.append(word)
 
-
-
-
-
-
-
-        coords = [x for x in words if x not in bad_words] #these are the actual coordinates as a list
-        #we can make these more useful by converting them to numbers and by separating to latitudes and longitudes
+        coords = [x for x in words if x not in bad_words]  #these are the actual coordinates as a list
+        # we can make these more useful by converting them to numbers and by separating to latitudes and longitudes
 
         latitudes = []
         longitudes = []
@@ -113,15 +109,18 @@ def coords_file_pairs(filepath):
             if coord[0] == "W":
                 longitudes.append(-float(coord[1:4])-float(1/60)*float(coord[4:6]))
 
-        #we now have a list of latitudes and longitudes. the vertices have the same list index in each
-        #i.e latitudes[x],longitudes[x] forms a vertex
+        # we now have a list of latitudes and longitudes. the vertices have the same list index in each
+        # i.e latitudes[x],longitudes[x] forms a vertex
 
-        himawari_fileformat_list.append("*" + str(obs_date.strftime('%Y%m%d_%H%M')) + "*" ) #The himawari data files will
-        #contain this somewhere in the filename. the ith item of the html list corresponds to the ith item of the fileformat list
+        himawari_fileformat_list.append("*" + str(obs_date.strftime('%Y%m%d_%H%M')) + "*" )
+        # The himawari data files will
+        # contain this somewhere in the filename.
+        # the ith item of the html list corresponds to the ith item of the fileformat list
 
-        output_list.append([himawari_fileformat_list[j],list(zip(latitudes,longitudes))]) #this is a bit clunky
+        output_list.append([himawari_fileformat_list[j],list(zip(latitudes,longitudes)),file])  # this is a bit clunky
 
-        j=j+1 #add one to the iteration variable which tells you which html file you're looking at this loop around
+        j=j+1   # add one to the iteration variable which tells you which html file you're looking at this loop around
+        # this isn't very pythonic though. I should probably use enumerate. this works though.
 
     return output_list
 
@@ -131,7 +130,7 @@ def coords_file_pairs(filepath):
 ###takes the filepath where you store your html folders as input
 ###tells you commands which you put in your console to download the right .DAT files
 
-def download_command(filepath):
+def download_command(filepath,dat_dir):
     # We get an OS standardised filepath in which to search for the .html files
     vaac_dir = str(Filepath(str(filepath)))
 
@@ -139,9 +138,6 @@ def download_command(filepath):
     html_file_list = glob.glob(str(Filepath(vaac_dir + "\\" + "*.html")))
 
     himawari_download_list = []  # will be list of download commands
-
-    dat_dir = str(Filepath(str(input("Enter the filepath in which you want to store your .DAT files: "))))
-
     # ultimately we will want to output something which will make it easy to pair the vaac html file with the himawari
     # .DAT files along with all of the vertices of the vaac polygon, so I initialise a list here to do that.
     # there's probably a more appropriate way to do it with dictionaries or tuples or something
@@ -155,8 +151,7 @@ def download_command(filepath):
 
         soup = BeautifulSoup(html,
                              features="html.parser")  # This gives us the BeautifulSoup-ifyed version (Pythonic?), read by default parser (can't get lxml to work?)
-        div = soup.find(
-            'div')  # This extracts the main bit of text from soup (ignoring the main title and lines and stuff)
+        div = soup.find('div')  # This extracts the main bit of text from soup (ignoring the main title and lines and stuff)
         vaac = [str(s) for s in div.contents if str(s) != '<br/>' and str(s) != str('\n')]
         date_time_info_pub = vaac[3]  # this is the line in the vaac that gives the time which the vaac was issued NOT the observation time
         # the polygon is issued for a ash cloud as it was 40 minutes before the publishing time of the vaac warning
@@ -224,7 +219,91 @@ def download_command(filepath):
             himawari_download_list.append("aws s3 sync --no-sign-request \"s3://noaa-himawari8/AHI-L1b-FLDK/" + str(
                 obs_date.strftime('%Y/%m/%d/%H%M/')) + "\" \"" + dat_dir + "\"")
 
-
         j = j + 1  # add one to the iteration variable which tells you which html file you're looking at this loop around
 
     return himawari_download_list
+
+
+
+def download_list_reduced(filepath):
+    himawari_zone_lat_boundaries = [90, 54, 37, 24, 12, 0, -12, -24, -37, -54, -90]
+    segment_names = ["*S0110*", "*S0210*", "*S0310*", "*S0410*", "*S0510*",
+                     "*S0610*", "*S0710*", "*S0810*", "*S0910*", "*S1010"]
+    tolerance = 0.5
+    segment_lat_range = [((90+tolerance),(54-tolerance)),((54+tolerance),(37-tolerance)),
+                         ((37+tolerance),(24-tolerance)),((24+tolerance),(12-tolerance)),
+                         ((12+tolerance),(0-tolerance)),((0+tolerance),(-12-tolerance)),
+                         ((-12+tolerance),(-24-tolerance)),((-24+tolerance),(-37-tolerance)),
+                         ((-37+tolerance),(-54-tolerance)),((-54+tolerance),(-90-tolerance))]
+    # if anyone else ever looks at this code please figure out how to do this as a list comprehension
+    html_data = coords_file_pairs(filepath)
+    for coords_file_pair in coords_file_pairs(filepath):
+        print (coords_file_pair[0])
+        print (coords_file_pair[1])
+    filefmt_segments_list = []
+    for pair in html_data:
+        required_segments = set()
+        coords = pair[1]
+        filefmt = pair[0]
+        if coords == []:
+            filefmt_segments_list.append([filefmt,"no segments"])
+        else:
+            lats = (list(zip(*coords)))[0]
+            maxlat = max(lats)
+            minlat = min(lats)
+            for lat_range in segment_lat_range:
+                if float(lat_range[0]) > float(maxlat) > float(lat_range[1]):
+                    required_segments.add(segment_names[segment_lat_range.index(lat_range)])
+                if float(lat_range[0]) > float(minlat) > float(lat_range[1]):
+                    required_segments.add(segment_names[segment_lat_range.index(lat_range)])
+            for segment in required_segments:
+                #segment_download_command = "--exclude \"*\" --include" + "\""  + str(segment) + "\""
+                filefmt_segments_list.append([filefmt,segment])
+    return filefmt_segments_list
+
+
+def get_ash_area_at_subsurface_point(vapath,index):
+    coords = (coords_file_pairs(vapath))[index][1]
+    filefmt = (coords_file_pairs(vapath))[index][0]
+    if coords == []:
+        return 0,0,filefmt
+    else:
+        #print("Polygon coordinates found: " + str([str(np.round(x,2)) for x in coords]))
+        lats = (list(zip(*coords)))[0]  # unzips list of coordinate tuples into lats and lons
+        lons = (list(zip(*coords)))[1]
+        minlat = min(lats)
+        maxlat = max(lats)
+        minlon = min(lons)
+        maxlon = max(lons)
+        if maxlon < 0:
+            maxlon = 360.0 + maxlon
+        if minlon < 0:
+            minlon = 360.0 + minlon
+        deltalonrad = 3.1416*(maxlon - minlon)/180
+        deltalatrad = 3.1416*(maxlat - minlat)/180
+        max_delta = max(deltalonrad,deltalatrad)
+        cover_square_size_max = int((max_delta*3200))
+        area = (6400**2)*np.sin((3.1416*(minlat+maxlat))/360)*deltalonrad*deltalatrad
+        pixel_count = int(area/4)
+        return pixel_count, cover_square_size_max, filefmt
+
+
+def purge_list(vapath,minsize,maxsize,delete):
+    # this doesn't work yet as the html files use the issue date not the observation date
+    del_list = []
+    vadata = coords_file_pairs(vapath)
+    for i in range(len(vadata)):
+        square_size = get_ash_area_at_subsurface_point(vapath,i)[1]
+        if square_size < minsize or square_size > maxsize:
+            del_list.append(vadata[i][2])
+    if delete:
+        for file in del_list:
+            os.remove(file)
+    else:
+        for file in del_list:
+            print("remove " + str(file))
+
+
+purge_list("D:\HTML_analysis_folder",32,512,True)
+for i in range(len(coords_file_pairs(htmlpath))):
+    print(get_ash_area_at_subsurface_point(htmlpath,i))
