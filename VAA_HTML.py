@@ -14,13 +14,14 @@ import glob
 import os
 import datetime as dt
 from pathlib import Path as Filepath
+from matplotlib import pyplot as plt
 
 ### coords_file_pair ###
 
 # Takes the location of your vaac html files as input
 # Outputs the list of vertices for the vaac polygon along with the .DAT general filetype
 
-htmlpath = "D:\HTML_analysis_folder"
+htmlpath = "D:\HTML_FULL"
 
 
 def coords_file_pairs(filepath):
@@ -41,6 +42,7 @@ def coords_file_pairs(filepath):
     j = 0  # this is an iteration variable. j will be the jth html file in the html file directory
 
     for file in html_file_list:
+        # print("Processing file " + str(j+1) + " of " + str(len(html_file_list)) + " files")
         with codecs.open(file, 'r') as f:  # codecs might not be required here, or rather io might be better?
             html = f.read() # This sets the variable html as the contents of fn_vacc (rather than the file itself)
 
@@ -152,6 +154,7 @@ def download_command(filepath, dat_dir):
     j = 0  # this is an iteration variable. j will be the jth html file in the html file directory
 
     for file in html_file_list:
+        j += 1
         with codecs.open(file, 'r') as f:  # codecs might not be required here, or rather io might be better?
             html = f.read()  # This sets the variable html as the contents of fn_vacc (rather than the file itself)
 
@@ -224,9 +227,6 @@ def download_command(filepath, dat_dir):
         if coords != []:
             himawari_download_list.append("aws s3 sync --no-sign-request \"s3://noaa-himawari8/AHI-L1b-FLDK/" + str(
                 obs_date.strftime('%Y/%m/%d/%H%M/')) + "\" \"" + dat_dir + "\"")
-
-        j = j + 1  # add one to the iteration variable which tells you which html file you're looking at this loop around
-
     return himawari_download_list
 
 
@@ -303,11 +303,61 @@ def get_ash_area_at_subsurface_point(vapath, index):  # note this is very approx
         return pixel_count, cover_square_size_max, filefmt
 
 
+def get_ash_areas_at_subsurface_point(vapath):  # note this is very approximate
+
+    vadata = coords_file_pairs(vapath)
+    output_list = []
+    for index in range(len(vadata)):
+        coords = vadata[index][1]
+        filefmt = vadata[index][0]
+        if coords == []:
+            output_list.append((0,0,filefmt))
+        else:
+            # print("Polygon coordinates found: " + str([str(np.round(x,2)) for x in coords]))
+            lats = (list(zip(*coords)))[0]  # unzips list of coordinate tuples into lats and lons
+            lons = (list(zip(*coords)))[1]
+            minlat = min(lats)
+            maxlat = max(lats)
+            minlon = min(lons)
+            maxlon = max(lons)
+            if maxlon < 0:
+                maxlon = 360.0 + maxlon
+            if minlon < 0:
+                minlon = 360.0 + minlon
+            deltalonrad = 3.1416*(maxlon - minlon)/180
+            deltalatrad = 3.1416*(maxlat - minlat)/180
+            max_delta = max(deltalonrad,deltalatrad)
+            cover_square_size_max = int((max_delta*3200))
+            area = (6400**2)*np.sin((3.1416*(minlat+maxlat))/360)*deltalonrad*deltalatrad
+            pixel_count = int(area/4)
+            output_list.append((pixel_count,cover_square_size_max,filefmt))
+    return output_list
+
+
 def purge_list(vapath, minsize, maxsize, delete):
     del_list = []
     vadata = coords_file_pairs(vapath)
     for i in range(len(vadata)):
-        square_size = get_ash_area_at_subsurface_point(vapath,i)[1]
+        print("Processing file " + str(i) + " of " + str(len(vadata)) + " files to make square data")
+        coords = vadata[i][1]
+        if coords == []:
+            square_size = 0
+        else:
+            # print("Polygon coordinates found: " + str([str(np.round(x,2)) for x in coords]))
+            lats = (list(zip(*coords)))[0]  # unzips list of coordinate tuples into lats and lons
+            lons = (list(zip(*coords)))[1]
+            minlat = min(lats)
+            maxlat = max(lats)
+            minlon = min(lons)
+            maxlon = max(lons)
+            if maxlon < 0:
+                maxlon = 360.0 + maxlon
+            if minlon < 0:
+                minlon = 360.0 + minlon
+            deltalonrad = 3.1416 * (maxlon - minlon) / 180
+            deltalatrad = 3.1416 * (maxlat - minlat) / 180
+            max_delta = max(deltalonrad, deltalatrad)
+            square_size = int((max_delta * 3200))
         if square_size < minsize or square_size > maxsize:
             del_list.append(vadata[i][2])
     if delete:
@@ -316,16 +366,24 @@ def purge_list(vapath, minsize, maxsize, delete):
     else:
         for file in del_list:
             print("remove " + str(file))
+        print("number of files to remove: " + str(len(del_list)) + " of " + str(len(vadata)))
 
 
-#purge_list("D:\HTML_analysis_folder",32,600,True)  # maximum size currently at 512
+#purge_list("D:\HTML_FULL",32,1000,True)  # maximum size currently at 512
 # but maximum size may be increased a bit higher since the actual pixel size is always
 # less than the program says by a little bit. More so near the poles.
 # The True/False part of the input to the function tells you if you want the html files
 # To be automatically deleted. set it to False if you want to check which files are going
 # to get deleted before actually deleting them.
 
-#for i in range(len(coords_file_pairs(htmlpath))):
-    #print(get_ash_area_at_subsurface_point(htmlpath,i))
-
+data = get_ash_areas_at_subsurface_point(htmlpath)
+for x in data:
+    print(x)
+sizelist = [x[1] for x in data]
+plt.hist(sizelist,bins = 100)
+plt.title("Distribution of VAAC polygon sizes in 2020")
+plt.xlabel("Pixel length of VAAC polygon if it were at the subsurface point")
+plt.show()
 #print(download_list_reduced(htmlpath))
+#print(coords_file_pairs(htmlpath))
+#print(len(coords_file_pairs(htmlpath)))

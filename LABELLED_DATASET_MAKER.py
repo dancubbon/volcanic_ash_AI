@@ -57,7 +57,7 @@ def generate_ash_map(vapath, datpath, index, region, type):
     coords = (coords_file_pairs(vapath))[index][1]
     filefmt = (coords_file_pairs(vapath))[index][0]
     print("Loading himawari8 data from: " + str((coords_file_pairs(vapath))[index][0]))
-    print("Polygon coordinates found: " + str(coords))
+    print("Polygon coordinates found: " + str(np.round(coords,2)))
     xcoords = (list(zip(*coords)))[0]
     ycoords = (list(zip(*coords)))[1]
     print("Creating scene...")
@@ -164,7 +164,7 @@ def generate_btd_and_ash_map(vapath, datpath, index, region, type):
     coords = (coords_file_pairs(vapath))[index][1]
     filefmt = (coords_file_pairs(vapath))[index][0]
     print("Loading himawari8 data from: " + str((coords_file_pairs(vapath))[index][0]))
-    print("Polygon coordinates found: " + str(coords))
+    print("Polygon coordinates found: " + str(np.round(coords,2)))
     xcoords = (list(zip(*coords)))[0]
     ycoords = (list(zip(*coords)))[1]
     print("Creating scene...")
@@ -234,12 +234,21 @@ def generate_btd_and_ash_map(vapath, datpath, index, region, type):
         ash_map = np.ma.masked_greater_equal(btd_masked, 0.0)
         ash_map_boolean = -np.sign(ash_map)
         ash_pixel_count = np.count_nonzero(ash_map_boolean == 1.0)
-        print("Ash pixels detected: " + str(ash_pixel_count))
+        print("Ash pixels detected on first iteration: " + str(ash_pixel_count))
         ash_fraction = ash_pixel_count/area
         ash_map_new_boolean = ash_map_boolean
+        ash_pixel_count_new = ash_pixel_count
+        j = 0
+        if ash_fraction < 0.3:
+            print("Ash fraction less than expected: Altering BTD threshold until ash fraction is enough.")
+        if ash_fraction > 0.85:
+            print("Ash fraction more than expected: Altering BTD threshold until ash fraction is enough.")
+        if ash_fraction > 0.3 and ash_fraction < 0.85:
+            print("Ash fraction good. Outputting ash map...")
         while ash_fraction < 0.3 or ash_fraction > 0.85:  # note this could end up in an infinite loop
+            j += 1
             if ash_fraction < 0.3:
-                print("Too little ash.")
+                # print("Too little ash. Increasing BTD Threshold.")
                 btd -= threshold_step
                 btd_masked = np.ma.array(btd, mask=makemask(coords, scene)[0] == False)
                 ash_map_new = np.ma.masked_greater_equal(btd_masked, 0)
@@ -247,20 +256,31 @@ def generate_btd_and_ash_map(vapath, datpath, index, region, type):
                 ash_pixel_count_new = np.count_nonzero(ash_map_new_boolean == 1.0)
                 ash_fraction = ash_pixel_count_new/area
             if ash_fraction > 0.85:
-                print("Too much ash.")
+                # print("Too much ash. Decreasing BTD Threshold.")
                 btd += threshold_step
                 btd_masked = np.ma.array(btd, mask=makemask(coords, scene)[0] == False)
                 ash_map_new = np.ma.masked_greater_equal(btd_masked, threshold)
                 ash_map_new_boolean = -np.sign(ash_map_new)
                 ash_pixel_count_new = np.count_nonzero(ash_map_new_boolean == 1.0)
                 ash_fraction = ash_pixel_count_new / area
+            if j > 50:
+                print("Ash percentage too sensitive. (Loop taking too long) ")
+                btd_masked = np.ma.array(btd, mask=makemask(coords, scene)[0] == False)
+                ash_map_new = np.ma.masked_greater_equal(btd_masked, threshold)
+                ash_map_new_boolean = -np.sign(ash_map_new)
+                ash_pixel_count_new = np.count_nonzero(ash_map_new_boolean == 1.0)
+                ash_fraction = ash_pixel_count_new / area
+                break
         ash_map_export = ash_map_new_boolean[std_msq[0]:std_msq[1], std_msq[2]:std_msq[3]]
         btd_map = btd[std_msq[0]:std_msq[1], std_msq[2]:std_msq[3]]
+        print("Ash pixels detected after any corrections: " + str(ash_pixel_count_new))
+        print("Ash percentage within polygon: " + str(100*ash_fraction))
+        print("Ash percentage within image: " + str(100*ash_pixel_count_new/(512*512)))
     else:
         btd_masked = np.ma.array(btd, mask=makemask(coords, scene)[0] == False)
         ash_map = np.ma.masked_greater_equal(btd_masked, 0)
         ash_map_export = -np.sign(ash_map)
-    return btd_map,ash_map_export,filefmt
+    return btd_map, ash_map_export, filefmt
 
 
 def generate_ash_and_all_data_map(vapath,datpath,index,region,type):  #not done yet
@@ -342,10 +362,13 @@ def generate_ash_and_all_data_map(vapath,datpath,index,region,type):  #not done 
 
 
 for i in range(len(coords_file_pairs(htmlpath))):
-    my_btd_and_ash_map = generate_btd_and_ash_map(htmlpath, datapath, i, "standard_modified_threshold", "contextual_wv_correction")
+    my_btd_and_ash_map = generate_btd_and_ash_map(htmlpath, datapath, i,
+                                                  "standard_modified_threshold", "contextual_wv_correction")
     file_flag = coords_file_pairs(htmlpath)[i][0][1:14]
-    plt.imsave(("btd_map_" + str(file_flag) + "_dynamic_threshold.png"), my_btd_and_ash_map[0],vmin=-5, vmax=5, cmap='RdBu')
-    plt.imsave(("ash_map_" + str(file_flag) + "_dynamic_threshold.png"), my_btd_and_ash_map[1],vmin=-5, vmax=5, cmap='RdBu')
+    plt.imsave(("btd_map_" + str(file_flag) + "_dynamic_threshold.png"), my_btd_and_ash_map[0],
+               vmin=-5, vmax=5, cmap='RdBu')
+    plt.imsave(("ash_map_" + str(file_flag) + "_dynamic_threshold.png"), my_btd_and_ash_map[1],
+               vmin=-5, vmax=5, cmap='RdBu')
 
 
 

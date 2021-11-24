@@ -33,14 +33,14 @@ def makemask(coords,scn):
     mean_y = 0.5*(max(y)+min(y))
     standard_masksquare = [int(mean_y-standard_size/2),int(mean_y+standard_size/2),
                            int(mean_x-standard_size/2),int(mean_x+standard_size/2)]
-    if standard_masksquare[0] < 0:
-        y_offset = -standard_masksquare[0]
+    if standard_masksquare[0] < 1:
+        y_offset = -(standard_masksquare[0]-1)
         standard_masksquare[0] = standard_masksquare[0] + y_offset
-        standard_masksquare[1] = standard_masksquare[1] + y_offset
-    if standard_masksquare[2] < 0:
-        x_offset = -standard_masksquare[2]
+        standard_masksquare[1] = standard_masksquare[1] + y_offset + 1
+    if standard_masksquare[2] < 1:
+        x_offset = -(standard_masksquare[2]-1)
         standard_masksquare[2] = standard_masksquare[2]+ x_offset
-        standard_masksquare[3] = standard_masksquare[3] + x_offset
+        standard_masksquare[3] = standard_masksquare[3] + x_offset + 1
     return mask2d,masksquare,standard_masksquare,poly_area
     # Array of true/false depending on if the pixel is in the polygon or not
 
