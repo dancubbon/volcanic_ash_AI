@@ -13,7 +13,7 @@ wv_correction_type = "static_wv_correction"
 # my_ash_map_date = my_ash_map_info[1][1:14]
 # print("Verifying data date: ")
 # print(str(my_ash_map_date))
-# plot_title = "ASP_MAP_" + str(wv_correction_type) + "_" + str(my_ash_map_date) + ".png"
+# plot_title = "ASH_MAP_" + str(wv_correction_type) + "_" + str(my_ash_map_date) + ".png"
 # print("plot will be titled: " + str(plot_title))
 # plt.imshow(my_ash_map,vmin=-5, vmax=5, cmap='RdBu')
 # plt.title(plot_title)
@@ -56,4 +56,5 @@ def make_full_data_set(html_folder, dat_folder, labelled_dataset_folder, wv_corr
         # labelled_dateset
 
 
-make_full_data_set("D:\Test_html_folder","D:\Test_download_folder","D:\Test_labelled_dataset_folder",wv_correction_type,1,0)
+make_full_data_set("D:\Test_html_folder", "D:\Test_download_folder",
+                   "D:\Test_labelled_dataset_folder", wv_correction_type, 1, 0)
