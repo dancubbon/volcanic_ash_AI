@@ -45,7 +45,12 @@ for index, row in df.iterrows():
 
     # Every volcano on the website needs to be in the dictionary for this next bit to work.
     volc_name = row['Volcano']
-    volc_no = v_dict[volc_name]
+    try:
+        volc_no = v_dict[volc_name]
+    except KeyError:
+        print("Volcano not in dictionary, skipping.")
+        volc_no = 00000000
+
     adv_no = row['Advisory Number'][5:].zfill(4)
 
     # create the link format which the VAAC html files are stored as
