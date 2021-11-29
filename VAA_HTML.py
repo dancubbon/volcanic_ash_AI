@@ -19,9 +19,10 @@ from matplotlib import pyplot as plt
 ### coords_file_pair ###
 
 # Takes the location of your vaac html files as input
-# Outputs the list of vertices for the vaac polygon along with the .DAT general filetype
+# Outputs basically all the useful information from the vaac file
 
 htmlpath = "D:\HTML_FULL"
+datpath = "D:\download_speed_test"
 
 
 def coords_file_pairs(filepath):
@@ -33,7 +34,7 @@ def coords_file_pairs(filepath):
     html_file_list = glob.glob(str(Filepath(vaac_dir + "\\" + "*.html")))
 
     himawari_fileformat_list = []  # will be list of fileformats
-
+    himawari_download_list = []
     # ultimately we will want to output something which will make it easy to pair the vaac html file with the himawari
     # .DAT files along with all of the vertices of the vaac polygon, so I initialise a list here to do that.
     # there's probably a more appropriate way to do it with dictionaries or tuples or something
@@ -121,15 +122,20 @@ def coords_file_pairs(filepath):
             # The himawari data files will
             # contain this somewhere in the filename.
             # the ith item of the html list corresponds to the ith item of the fileformat list
+            if coords != []:
+                himawari_download_list.append("aws s3 sync --no-sign-request \"s3://noaa-himawari8/AHI-L1b-FLDK/" + str(
+                    obs_date.strftime('%Y/%m/%d/%H%M/')) + "\" \"" + datpath + "\"")
 
-            output_list.append([himawari_fileformat_list[j],list(zip(latitudes,longitudes)),file])  # this is a bit clunky
+            output_list.append([himawari_fileformat_list[j], list(zip(latitudes, longitudes)),
+                                file, himawari_download_list[j]])  # this is a bit clunky
 
             j=j+1   # add one to the iteration variable which tells you which html file you're looking at this loop around
             # this isn't very pythonic though. I should probably use enumerate. this works though.
 
     return output_list
 
-# element of output_list looks like ['*20210223_2150*',[(30,140),(32,142),...],'directory/my_file.html']
+# element of output_list looks like ['*20210223_2150*',[(30,140),(32,142),...],'directory/my_file.html',
+#                                    'aws sync s3://your_file']
 
 
 
@@ -150,7 +156,6 @@ def download_command(filepath, dat_dir):
     # .DAT files along with all of the vertices of the vaac polygon, so I initialise a list here to do that.
     # there's probably a more appropriate way to do it with dictionaries or tuples or something
 
-    output_list = []
     j = 0  # this is an iteration variable. j will be the jth html file in the html file directory
 
     for file in html_file_list:
@@ -233,21 +238,25 @@ def download_command(filepath, dat_dir):
 # himawari_download_list is just a list of aws commands
 
 
-def download_list_reduced(filepath):
+def download_list_reduced(filepath):  # note this is a bit of a bodge that will only work in the northern hemisphere
     himawari_zone_lat_boundaries = [90, 54, 37, 24, 12, 0, -12, -24, -37, -54, -90]
     segment_names = ["*S0110*", "*S0210*", "*S0310*", "*S0410*", "*S0510*",
                      "*S0610*", "*S0710*", "*S0810*", "*S0910*", "*S1010"]
-    tolerance = 0.5
+    tolerance = 2.5
+    up_tolerance = 75
+    down_tolerance = 125
     segment_lat_range = [((90+tolerance),(54-tolerance)),((54+tolerance),(37-tolerance)),
                          ((37+tolerance),(24-tolerance)),((24+tolerance),(12-tolerance)),
                          ((12+tolerance),(0-tolerance)),((0+tolerance),(-12-tolerance)),
                          ((-12+tolerance),(-24-tolerance)),((-24+tolerance),(-37-tolerance)),
                          ((-37+tolerance),(-54-tolerance)),((-54+tolerance),(-90-tolerance))]
+    segment_pixel_ranges = [(up_tolerance+5500-550*x,5500-550*(x+1)-down_tolerance) for x in range(10)]
+    print(segment_pixel_ranges)
     # if anyone else ever looks at this code please figure out how to do this as a list comprehension
     html_data = coords_file_pairs(filepath)
-    for coords_file_pair in coords_file_pairs(filepath):
-        print (coords_file_pair[0])
-        print (coords_file_pair[1])
+    # for coords_file_pair in coords_file_pairs(filepath):
+    #     print (coords_file_pair[0])
+    #     print (coords_file_pair[1])
     filefmt_segments_list = []
     for pair in html_data:
         required_segments = set()
@@ -257,20 +266,34 @@ def download_list_reduced(filepath):
             filefmt_segments_list.append([filefmt,"no segments"])
         else:
             lats = (list(zip(*coords)))[0]
-            maxlat = max(lats)
-            minlat = min(lats)
-            for lat_range in segment_lat_range:
-                if float(lat_range[0]) > float(maxlat) > float(lat_range[1]):
-                    required_segments.add(segment_names[segment_lat_range.index(lat_range)])
-                if float(lat_range[0]) > float(minlat) > float(lat_range[1]):
-                    required_segments.add(segment_names[segment_lat_range.index(lat_range)])
+            maxlat0 = max(lats)
+            minlat0 = min(lats)
+            midlat0 = 0.5*(maxlat0+minlat0)
+            midlat_pixel = (2750*np.cos((midlat0-90.0)*(3.14/180)))+2750
+            # print("midlat pixel " + str(midlat_pixel) + " for " + filefmt)
+            max_pixel = midlat_pixel + 256
+            min_pixel = midlat_pixel - 256
+            for pixel_range in segment_pixel_ranges:
+                if float(pixel_range[0]) > float(max_pixel) > float(pixel_range[1]):
+                    required_segments.add(segment_names[segment_pixel_ranges.index(pixel_range)])
+                    # print("segment " + str(segment_names[segment_pixel_ranges.index(pixel_range)]) + " added. " + "because; " + str(pixel_range[0]) + " > " + str(max_pixel) + " > " + str(pixel_range[1]))
+                if float(pixel_range[0]) > float(min_pixel) > float(pixel_range[1]):
+                    required_segments.add(segment_names[segment_pixel_ranges.index(pixel_range)])
+                    # print("segment " + str(segment_names[segment_pixel_ranges.index(pixel_range)]) + " added." + "because; " + str(pixel_range[0]) + " > " + str(min_pixel) + " > " + str(pixel_range[1]))
             for segment in required_segments:
                 #segment_download_command = "--exclude \"*\" --include" + "\""  + str(segment) + "\""
                 filefmt_segments_list.append([filefmt,segment])
     return filefmt_segments_list
 
+
+# segs_pairs = download_list_reduced("D:\\HTML_FULL_REDUCED")
+# segs = [x[1] for x in segs_pairs]
+# plt.hist(segs)
+# plt.show()
+#
+
 # this isn't yet a fully fledged list of aws commands but rather an element looks like
-# ['20210329_1230','S0310']
+# ['*20210329_1230*','S0310']
 # the vast vast majority need only S0110,S0210,S0310 since these cover most of the tokyo vaac area
 # this applies as long as the latitude is above about 24 degrees north
 # this raises questions about how well this will generalise to eruptions near the equator
@@ -304,12 +327,12 @@ def get_ash_area_at_subsurface_point(vapath, index):  # note this is very approx
 
 
 def get_ash_areas_at_subsurface_point(vapath):  # note this is very approximate
-
     vadata = coords_file_pairs(vapath)
     output_list = []
     for index in range(len(vadata)):
         coords = vadata[index][1]
         filefmt = vadata[index][0]
+        volcano_code = vadata[index][2][10+len(vapath):18+len(vapath)]
         if coords == []:
             output_list.append((0,0,filefmt))
         else:
@@ -330,7 +353,7 @@ def get_ash_areas_at_subsurface_point(vapath):  # note this is very approximate
             cover_square_size_max = int((max_delta*3200))
             area = (6400**2)*np.sin((3.1416*(minlat+maxlat))/360)*deltalonrad*deltalatrad
             pixel_count = int(area/4)
-            output_list.append((pixel_count,cover_square_size_max,filefmt))
+            output_list.append((pixel_count,cover_square_size_max,filefmt,volcano_code))
     return output_list
 
 
@@ -369,21 +392,47 @@ def purge_list(vapath, minsize, maxsize, delete):
         print("number of files to remove: " + str(len(del_list)) + " of " + str(len(vadata)))
 
 
-#purge_list("D:\HTML_FULL",32,1000,True)  # maximum size currently at 512
+#purge_list("D:\HTML_FULL_EXTRA_REDUCED",100,1000,True)  # maximum size currently at 512
 # but maximum size may be increased a bit higher since the actual pixel size is always
 # less than the program says by a little bit. More so near the poles.
 # The True/False part of the input to the function tells you if you want the html files
 # To be automatically deleted. set it to False if you want to check which files are going
 # to get deleted before actually deleting them.
 
-data = get_ash_areas_at_subsurface_point(htmlpath)
-for x in data:
-    print(x)
-sizelist = [x[1] for x in data]
-plt.hist(sizelist,bins = 100)
-plt.title("Distribution of VAAC polygon sizes in 2020")
-plt.xlabel("Pixel length of VAAC polygon if it were at the subsurface point")
-plt.show()
+# data = get_ash_areas_at_subsurface_point("D:\\HTML_FULL_REDUCED")
+# for x in data:
+#     print(x)
+# sizelist = [x[1] for x in data]
+# plt.hist(sizelist,bins = 80)
+# plt.title("Distribution of VAAC polygon sizes in 2020/2021")
+# plt.xlabel("Pixel length of VAAC polygon if it were at the subsurface point")
+# plt.show()
+
+# v_dict = {'NISHINOSHIMA': '28409600', 'SAKURAJIMA (AIRA CALDERA)': '28208001', 'KARYMSKY': '30013000', 'EBEKO': '29038000',
+#           'KLYUCHEVSKOY': '30026000', 'SHEVELUCH': '30027000', 'SUWANOSEJIMA': '28203000', 'BEZYMIANNY': '30025000',
+#           'SATSUMA-IOJIMA (KIKAI CALDERA)': '28206000', 'ASOSAN': '28211000', 'KUCHINOERABUJIMA': '28205000',
+#           'TAAL': '27307000', 'SEMISOPOCHNOI': '31106000', 'PAGAN': '28417000', 'CHIRINKOTAN' : '29026000',
+#           'FUKUTOKU-OKA-NO-BA': '28413000', 'SARYCHEV PEAK': '29024000', 'SINABUNG': '26108000', 'NOTICE': '00000000',
+#           'TEST': '10000001'}
+#
+# volc_poly_sizes = [(x[1],list(v_dict.keys())[list(v_dict.values()).index(x[3])]) for x in data]
+# print(volc_poly_sizes)
+# volcs = v_dict.keys()
+# print(volcs)
+# volc_sizes_list = []
+# for volc in volcs:
+#     if volc in ["NISHINOSHIMA",'KARYMSKY','KLYUCHEVSKOY','SUWANOSEJIMA','SAKURAJIMA (AIRA CALDERA)']:
+#         volc_sizes = [x[0] for x in volc_poly_sizes if x[1] == volc]
+#         volc_sizes_list.append(volc_sizes)
+# print(volc_sizes_list)
+# plt.hist(volc_sizes_list, stacked=True,label=["NISHINOSHIMA",'KARYMSKY','KLYUCHEVSKOY','SUWANOSEJIMA','SAKURAJIMA (AIRA CALDERA)'], bins = 50)
+# plt.legend(loc = 'upper right')
+# plt.title("VAAC Polygon Sizes in 2020/2021 by Volcano")
+# plt.xlabel("Number of pixels needed to enclose polygon at subsurface point")
+# plt.savefig("Volcano_Histogram.png")
+# plt.show()
+
 #print(download_list_reduced(htmlpath))
 #print(coords_file_pairs(htmlpath))
 #print(len(coords_file_pairs(htmlpath)))
+
