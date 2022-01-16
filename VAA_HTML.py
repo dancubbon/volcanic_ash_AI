@@ -22,10 +22,10 @@ from matplotlib import pyplot as plt
 # Outputs basically all the useful information from the vaac file
 
 htmlpath = "D:\HTML_FULL"
-datpath = "D:\download_speed_test"
+datpath = "D:\H8_DATA"
 
 
-def coords_file_pairs(filepath):
+def get_vaac_data(filepath):
 
     # We get an OS standardised filepath in which to search for the .html files
     vaac_dir = str(Filepath(str(filepath)))
@@ -244,7 +244,7 @@ def download_list_reduced(filepath):  # note this is a bit of a bodge that will 
                      "*S0610*", "*S0710*", "*S0810*", "*S0910*", "*S1010"]
     tolerance = 2.5
     up_tolerance = 75
-    down_tolerance = 125
+    down_tolerance = 175
     segment_lat_range = [((90+tolerance),(54-tolerance)),((54+tolerance),(37-tolerance)),
                          ((37+tolerance),(24-tolerance)),((24+tolerance),(12-tolerance)),
                          ((12+tolerance),(0-tolerance)),((0+tolerance),(-12-tolerance)),
@@ -253,7 +253,7 @@ def download_list_reduced(filepath):  # note this is a bit of a bodge that will 
     segment_pixel_ranges = [(up_tolerance+5500-550*x,5500-550*(x+1)-down_tolerance) for x in range(10)]
     print(segment_pixel_ranges)
     # if anyone else ever looks at this code please figure out how to do this as a list comprehension
-    html_data = coords_file_pairs(filepath)
+    html_data = get_vaac_data(filepath)
     # for coords_file_pair in coords_file_pairs(filepath):
     #     print (coords_file_pair[0])
     #     print (coords_file_pair[1])
@@ -301,8 +301,8 @@ def download_list_reduced(filepath):  # note this is a bit of a bodge that will 
 
 
 def get_ash_area_at_subsurface_point(vapath, index):  # note this is very approximate
-    coords = (coords_file_pairs(vapath))[index][1]
-    filefmt = (coords_file_pairs(vapath))[index][0]
+    coords = (get_vaac_data(vapath))[index][1]
+    filefmt = (get_vaac_data(vapath))[index][0]
     if coords == []:
         return 0,0,filefmt
     else:
@@ -327,7 +327,7 @@ def get_ash_area_at_subsurface_point(vapath, index):  # note this is very approx
 
 
 def get_ash_areas_at_subsurface_point(vapath):  # note this is very approximate
-    vadata = coords_file_pairs(vapath)
+    vadata = get_vaac_data(vapath)
     output_list = []
     for index in range(len(vadata)):
         coords = vadata[index][1]
@@ -359,7 +359,7 @@ def get_ash_areas_at_subsurface_point(vapath):  # note this is very approximate
 
 def purge_list(vapath, minsize, maxsize, delete):
     del_list = []
-    vadata = coords_file_pairs(vapath)
+    vadata = get_vaac_data(vapath)
     for i in range(len(vadata)):
         print("Processing file " + str(i) + " of " + str(len(vadata)) + " files to make square data")
         coords = vadata[i][1]
@@ -392,7 +392,7 @@ def purge_list(vapath, minsize, maxsize, delete):
         print("number of files to remove: " + str(len(del_list)) + " of " + str(len(vadata)))
 
 
-#purge_list("D:\HTML_FULL_EXTRA_REDUCED",100,1000,True)  # maximum size currently at 512
+# purge_list("D:\HTML_FULL_EXTREMELY_REDUCED",160,1000,True)  # maximum size currently at 512
 # but maximum size may be increased a bit higher since the actual pixel size is always
 # less than the program says by a little bit. More so near the poles.
 # The True/False part of the input to the function tells you if you want the html files

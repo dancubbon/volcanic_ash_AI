@@ -1,6 +1,6 @@
 from VAA_HTML import download_command
 from VAA_HTML import download_list_reduced
-from VAA_HTML import coords_file_pairs
+from VAA_HTML import get_vaac_data
 import subprocess
 import numpy as np
 print("Enter the name of the directory where your .HTML files are stored :")
@@ -32,7 +32,7 @@ if ans == "download_north":
         subprocess.run(new_command)
 if ans == "download_minimum":
     filefmt_segment_pairs = download_list_reduced(html_dir)
-    data = coords_file_pairs(html_dir)
+    data = get_vaac_data(html_dir)
     download_list = download_command(html_dir, data_dir)
     new_download_list = []
     for pair in filefmt_segment_pairs:
@@ -47,7 +47,7 @@ if ans == "download_minimum":
         reduced_command = " ".join(command_split)
         new_download_list.append(reduced_command)
     fileset_count = len(new_download_list)
-    for z in new_download_list[1104:]:
+    for z in new_download_list:
         subprocess.run(z)
         print("Downloaded fileset " + str(new_download_list.index(z) + 1) + " of " + str(fileset_count + 1) + " ... " +
               str(np.round((100*(new_download_list.index(z)+1)/(fileset_count+1)),2)) + " %")

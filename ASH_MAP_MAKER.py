@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from pathlib import Path
 import subprocess
-from VAA_HTML import coords_file_pairs
+from VAA_HTML import get_vaac_data
 from VAA_HTML import download_command
 from LABELLED_DATASET_MAKER import generate_ash_map
 from LABELLED_DATASET_MAKER import generate_btd_map
@@ -28,7 +28,7 @@ def make_full_data_set(html_folder, dat_folder, labelled_dataset_folder, wv_corr
     # wv_correction = type of water vapour correction. "no_wv_correction" "static_wv_correction" "dynamic_wv_correction"
     # show_image = 0 if you don't want to save the images 1 if you do
     # download_required = 0 if you already have the data, 1 if you don't ye
-    html_file_count = len(coords_file_pairs(html_folder))
+    html_file_count = len(get_vaac_data(html_folder))
     print("number of files: " + str(html_file_count))
     for i in range(html_file_count):
         print("current file number: " + str(i+1))
@@ -40,8 +40,8 @@ def make_full_data_set(html_folder, dat_folder, labelled_dataset_folder, wv_corr
         print("approximate time remaining (ignoring any download times): " + str(2*(html_file_count-i)) + " minutes.")
         data = generate_ash_map(html_folder, dat_folder, i, "full", wv_correction)
         ash_data = data[0].tolist(0)
-        filename = str(coords_file_pairs(html_folder)[i][0][1:14]) + "_" + str(wv_correction) + ".txt"
-        pngname = str(coords_file_pairs(html_folder)[i][0][1:14]) + "_" + str(wv_correction) + ".png"
+        filename = str(get_vaac_data(html_folder)[i][0][1:14]) + "_" + str(wv_correction) + ".txt"
+        pngname = str(get_vaac_data(html_folder)[i][0][1:14]) + "_" + str(wv_correction) + ".png"
         filename_with_path = str(Path(labelled_dataset_folder + "\\" + filename))
         # f = open(filename_with_path,'x') # will return an error if the file already exists
         f = open(filename_with_path, 'w')  # will write the file again even if it already exists
