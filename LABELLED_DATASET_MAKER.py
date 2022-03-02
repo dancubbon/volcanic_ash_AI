@@ -26,15 +26,16 @@ from MASK_MAKER import makemask
 from PIL import Image
 
 
-datapath = "D:\H8_DATA"
-htmlpath = "D:\HTML_FULL_REDUCED"
+datapath = "E:\\RAIKOKE\\PAPER_DATA\\"
+htmlpath = "E:\\RAIKOKE\\HTML"
 all_channels = ['B01','B02','B03','B04','B05','B06','B07','B08','B09','B10','B11','B12','B13','B14','B15','B16']
 
 v_dict = {'NISHINOSHIMA': '28409600', 'SAKURAJIMA (AIRA CALDERA)': '28208001', 'KARYMSKY': '30013000', 'EBEKO': '29038000',
           'KLYUCHEVSKOY': '30026000', 'SHEVELUCH': '30027000', 'SUWANOSEJIMA': '28203000', 'BEZYMIANNY': '30025000',
           'SATSUMA-IOJIMA (KIKAI CALDERA)': '28206000', 'ASOSAN': '28211000', 'KUCHINOERABUJIMA': '28205000',
           'TAAL': '27307000', 'SEMISOPOCHNOI': '31106000', 'PAGAN': '28417000', 'CHIRINKOTAN' : '29026000',
-          'FUKUTOKU-OKA-NO-BA': '28413000', 'SARYCHEV PEAK': '29024000', 'SINABUNG': '26108000', 'NOTICE': '00000000',
+          'FUKUTOKU-OKA-NO-BA': '28413000', 'SARYCHEV PEAK': '29024000', 'SINABUNG': '26108000', 'RAIKOKE': '29025000',
+          'NOTICE': '00000000',
           'TEST': '10000001'}
 
 n_dict = {value:key for key,value in v_dict.items()}
@@ -560,12 +561,13 @@ def NormalizeData(data):
     return (data - np.nanmin(data)) / (np.nanmax(data) - np.nanmin(data))
 
 html_data = get_vaac_data(htmlpath)
-s = "D:\\POLYGON_TRAINING\\"
+s = "E:\\TRAINING\\"
 
 def generate_polygon_labelled_data(vapath,datpath,i,show_image,rotations):
     # read relevant data from VAAC warnings in vapath
     data = get_vaac_data(vapath)
     file_format = data[i][0]
+    print(f"Fileformat is {file_format}")
     polygon_coords = data[i][1]
     volcano_code = data[i][2][10 + len(htmlpath):18 + len(htmlpath)]
     volcano_name = n_dict[volcano_code]
@@ -631,10 +633,22 @@ def generate_polygon_labelled_data(vapath,datpath,i,show_image,rotations):
 
 # done 2,822,20 3,823,20 4,824,20 5,825,20 6,826,20, 7,827,20 8,828,20 9,829,20 10,830,20 11,831,20 12,832,20 13,833,20
 # 14,834,20 15,835,20 16,836,20 17,837,20 18,838,20 19,839,20 20,840,20 21,841,20 861,966,1
-for i in range(1,2,1):
-    generate_polygon_labelled_data(htmlpath, datapath, i, False, True)
+for i in range(0,1):
+    generate_polygon_labelled_data(htmlpath, datapath, i, True, False)
 
-
+# data = get_vaac_data(htmlpath)
+#
+# import subprocess
+#
+# b_dir = "E:\BROKEN_HTML"
+#
+# for i in range(0,1022):
+#     #print(f"{data[i][0]} was this bad before? {data[i][4]}")
+#     if data[i][4] == True:
+#         print(f"copy \"{data[i][2]}\" \"{b_dir}{data[i][2][len(htmlpath):]}\" ")
+#         subprocess.call(f"copy {data[i][2]} {b_dir}{data[i][2][len(htmlpath):]} " , shell = True)
+#
+#
 
 
 

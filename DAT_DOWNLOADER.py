@@ -47,10 +47,10 @@ if ans == "download_minimum":
         reduced_command = " ".join(command_split)
         new_download_list.append(reduced_command)
     fileset_count = len(new_download_list)
-    for z in new_download_list:
+    for index,z in enumerate(new_download_list):
         subprocess.run(z)
         print("Downloaded fileset " + str(new_download_list.index(z) + 1) + " of " + str(fileset_count + 1) + " ... " +
-              str(np.round((100*(new_download_list.index(z)+1)/(fileset_count+1)),2)) + " %")
+            str(np.round((100*(new_download_list.index(z)+1)/(fileset_count+1)),2)) + " %")
 
         # On ethernet it takes about 33 seconds to download all the data for a dataset (mostly searching!)
         # On my computer it takes about 40 seconds per dataset to generate the ash map

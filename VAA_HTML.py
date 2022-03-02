@@ -40,6 +40,7 @@ def get_vaac_data(filepath):
     # there's probably a more appropriate way to do it with dictionaries or tuples or something
 
     output_list = []
+    was_broken_list = []
     j = 0  # this is an iteration variable. j will be the jth html file in the html file directory
 
     for file in html_file_list:
@@ -70,17 +71,27 @@ def get_vaac_data(filepath):
         # stands for hours and minutes and indicates how to read the string
         # e.g if format was 23:20 put %H:%M if 23-20 put %H-%M etc
         pub_time = dt.datetime.strptime(pub_time, FMT)
+
         if obs_time == "":
-            output_list.append(["*19700101_0000*",[],file])
+            output_list.append(["*19700101_0000*",[],file,"",False])
         else:
             obs_time = dt.datetime.strptime(obs_time, FMT)
 
             # have to do different methods if goes from 23 --> 0 to avoid negative vals
-            if pub_time.hour > obs_time.hour:  # i.e 14 > 13
+            if pub_time.hour >= obs_time.hour:  # i.e 14 >= 13
                 tdelta = pub_time - obs_time
             else:
                 tdelta = obs_time - pub_time - dt.timedelta(days=1)
-                # add a day because it works for some reason thats kinda makes sense
+
+            if pub_time.hour == obs_time.hour:
+                was_broken_list.append(True)
+            else:
+                was_broken_list.append(False)
+
+
+
+
+            # add a day because it works for some reason thats kinda makes sense
             tdelta = abs(tdelta)
 
             # now subtracting the time difference from pub to obtain obs date
@@ -128,6 +139,8 @@ def get_vaac_data(filepath):
 
             output_list.append([himawari_fileformat_list[j], list(zip(latitudes, longitudes)),
                                 file, himawari_download_list[j]])  # this is a bit clunky
+
+            # anyone doing this in the future please use a panda dataframe for god's sake
 
             j=j+1   # add one to the iteration variable which tells you which html file you're looking at this loop around
             # this isn't very pythonic though. I should probably use enumerate. this works though.
@@ -189,7 +202,7 @@ def download_command(filepath, dat_dir):
         obs_time = dt.datetime.strptime(obs_time, FMT)
 
         # have to do different methods if goes from 23 --> 0 to avoid negative vals
-        if pub_time.hour > obs_time.hour:  # i.e 14 > 13
+        if pub_time.hour >= obs_time.hour:  # i.e 14 > 13
             tdelta = pub_time - obs_time
         else:
             tdelta = obs_time - pub_time - dt.timedelta(days=1)
